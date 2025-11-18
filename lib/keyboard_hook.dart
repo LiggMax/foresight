@@ -115,6 +115,10 @@ class KeyboardHook {
 
   // Helper: Format key combination string
   static String formatKeyCombo(int modifiers, int vk) {
+    if (vk == 0) {
+      return '未设置';
+    }
+
     final parts = <String>[];
     if ((modifiers & MOD_CONTROL) != 0) parts.add('Ctrl');
     if ((modifiers & MOD_ALT) != 0) parts.add('Alt');
@@ -129,8 +133,13 @@ class KeyboardHook {
     } else {
       keyName = 'Key$vk';
     }
-    parts.add(keyName);
 
+    // If no modifiers, just return the key name
+    if (parts.isEmpty) {
+      return keyName;
+    }
+
+    parts.add(keyName);
     return parts.join(' + ');
   }
 }

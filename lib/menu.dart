@@ -27,8 +27,8 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
   bool _hiveLoaded = false;
   Box? _settingsBox;
 
-  int _hotkeyModifiers = KeyboardHook.MOD_CONTROL;
-  int _hotkeyVk = 0x48; // H key
+  int _hotkeyModifiers = 0; // 默认无修饰键，单独按键
+  int _hotkeyVk = KeyboardHook.VK_F1; // 默认 F1
 
   @override
   void initState() {
@@ -43,14 +43,14 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
         final strokeValue = _settingsBox!.get(_strokeKey, defaultValue: 3.0);
         final lengthValue = _settingsBox!.get(_lengthKey, defaultValue: 25.0);
         final gapValue = _settingsBox!.get(_gapKey, defaultValue: 8.0);
-        final modifiersValue = _settingsBox!.get(_hotkeyModifiersKey, defaultValue: KeyboardHook.MOD_CONTROL);
-        final vkValue = _settingsBox!.get(_hotkeyVkKey, defaultValue: 0x48);
+        final modifiersValue = _settingsBox!.get(_hotkeyModifiersKey, defaultValue: 0);
+        final vkValue = _settingsBox!.get(_hotkeyVkKey, defaultValue: KeyboardHook.VK_F1);
 
         stroke = (strokeValue is double) ? strokeValue : 3.0;
         length = (lengthValue is double) ? lengthValue : 25.0;
         gap = (gapValue is double) ? gapValue : 8.0;
-        _hotkeyModifiers = (modifiersValue is int) ? modifiersValue : KeyboardHook.MOD_CONTROL;
-        _hotkeyVk = (vkValue is int) ? vkValue : 0x48;
+        _hotkeyModifiers = (modifiersValue is int) ? modifiersValue : 0;
+        _hotkeyVk = (vkValue is int) ? vkValue : KeyboardHook.VK_F1;
         _hiveLoaded = true;
       });
 
@@ -312,7 +312,7 @@ class _HotkeyDialogState extends State<_HotkeyDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('请按下您想要设置的快捷键组合：'),
+          const Text('请按下您想要设置的按键（可单独按键或组合键）：'),
           const SizedBox(height: 16),
           Focus(
             autofocus: true,
@@ -333,47 +333,61 @@ class _HotkeyDialogState extends State<_HotkeyDialog> {
             ),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
+          Row(
             children: [
-              FilterChip(
-                label: const Text('Ctrl'),
-                selected: (_modifiers & KeyboardHook.MOD_CONTROL) != 0,
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _modifiers |= KeyboardHook.MOD_CONTROL;
-                    } else {
-                      _modifiers &= ~KeyboardHook.MOD_CONTROL;
-                    }
-                  });
-                },
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  children: [
+                    FilterChip(
+                      label: const Text('Ctrl'),
+                      selected: (_modifiers & KeyboardHook.MOD_CONTROL) != 0,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _modifiers |= KeyboardHook.MOD_CONTROL;
+                          } else {
+                            _modifiers &= ~KeyboardHook.MOD_CONTROL;
+                          }
+                        });
+                      },
+                    ),
+                    FilterChip(
+                      label: const Text('Alt'),
+                      selected: (_modifiers & KeyboardHook.MOD_ALT) != 0,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _modifiers |= KeyboardHook.MOD_ALT;
+                          } else {
+                            _modifiers &= ~KeyboardHook.MOD_ALT;
+                          }
+                        });
+                      },
+                    ),
+                    FilterChip(
+                      label: const Text('Shift'),
+                      selected: (_modifiers & KeyboardHook.MOD_SHIFT) != 0,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _modifiers |= KeyboardHook.MOD_SHIFT;
+                          } else {
+                            _modifiers &= ~KeyboardHook.MOD_SHIFT;
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ),
-              FilterChip(
-                label: const Text('Alt'),
-                selected: (_modifiers & KeyboardHook.MOD_ALT) != 0,
-                onSelected: (selected) {
+              TextButton(
+                onPressed: () {
                   setState(() {
-                    if (selected) {
-                      _modifiers |= KeyboardHook.MOD_ALT;
-                    } else {
-                      _modifiers &= ~KeyboardHook.MOD_ALT;
-                    }
+                    _modifiers = 0;
                   });
                 },
-              ),
-              FilterChip(
-                label: const Text('Shift'),
-                selected: (_modifiers & KeyboardHook.MOD_SHIFT) != 0,
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _modifiers |= KeyboardHook.MOD_SHIFT;
-                    } else {
-                      _modifiers &= ~KeyboardHook.MOD_SHIFT;
-                    }
-                  });
-                },
+                child: const Text('清除修饰键'),
               ),
             ],
           ),
@@ -386,12 +400,12 @@ class _HotkeyDialogState extends State<_HotkeyDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            if (_modifiers != 0 && _vk != 0) {
+            if (_vk != 0) {
               widget.onSave(_modifiers, _vk);
               Navigator.of(context).pop();
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('请设置有效的快捷键组合')),
+                const SnackBar(content: Text('请设置有效的按键')),
               );
             }
           },
