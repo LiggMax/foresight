@@ -1,0 +1,7 @@
+EXPORTS
+register_hotkey
+unregister_hotkey
+set_hotkey_callback
+is_hotkey_registered
+process_hotkey_message
+

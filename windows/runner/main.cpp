@@ -4,6 +4,7 @@
 
 #include "flutter_window.h"
 #include "utils.h"
+#include "keyboard_hook.h"
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
@@ -34,8 +35,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   ::MSG msg;
   while (::GetMessage(&msg, nullptr, 0, 0)) {
-    ::TranslateMessage(&msg);
-    ::DispatchMessage(&msg);
+    // Process hotkey messages
+    if (process_hotkey_message(&msg) == 0) {
+      ::TranslateMessage(&msg);
+      ::DispatchMessage(&msg);
+    }
   }
 
   ::CoUninitialize();

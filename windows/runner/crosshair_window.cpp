@@ -155,5 +155,15 @@ void crosshair_update(double stroke, double length, double gap) {
   }
 }
 
+void crosshair_toggle() {
+  if (g_hwnd == nullptr) {
+    // Window doesn't exist, create it with current settings
+    crosshair_show(g_stroke, g_length, g_gap);
+  } else {
+    // Window exists, hide it
+    crosshair_hide();
+  }
+}
+
 }  // extern "C"
 
