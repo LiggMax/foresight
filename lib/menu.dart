@@ -45,9 +45,18 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
         final strokeValue = _settingsBox!.get(_strokeKey, defaultValue: 3.0);
         final lengthValue = _settingsBox!.get(_lengthKey, defaultValue: 25.0);
         final gapValue = _settingsBox!.get(_gapKey, defaultValue: 8.0);
-        final showCenterValue = _settingsBox!.get(_showCenterKey, defaultValue: false);
-        final modifiersValue = _settingsBox!.get(_hotkeyModifiersKey, defaultValue: 0);
-        final vkValue = _settingsBox!.get(_hotkeyVkKey, defaultValue: KeyboardHook.VK_F1);
+        final showCenterValue = _settingsBox!.get(
+          _showCenterKey,
+          defaultValue: false,
+        );
+        final modifiersValue = _settingsBox!.get(
+          _hotkeyModifiersKey,
+          defaultValue: 0,
+        );
+        final vkValue = _settingsBox!.get(
+          _hotkeyVkKey,
+          defaultValue: KeyboardHook.VK_F1,
+        );
 
         stroke = (strokeValue is double) ? strokeValue : 3.0;
         length = (lengthValue is double) ? lengthValue : 25.0;
@@ -101,32 +110,27 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
 
   void _registerHotkey() {
     KeyboardHook.unregisterHotkey();
-    
+
     // Register hotkey - the toggle will be handled in C++ side
     final result = KeyboardHook.registerHotkey(_hotkeyModifiers, _hotkeyVk);
     if (result == 0 && mounted) {
       // Registration failed, show error
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('快捷键注册失败，可能已被其他程序占用')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('快捷键注册失败，可能已被其他程序占用')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("准星控制面板"),
-      ),
+      appBar: AppBar(title: const Text("准星控制面板")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "参数调节",
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text("参数调节", style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             _slider(
               context,
@@ -137,7 +141,12 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
               onChanged: _hiveLoaded
                   ? (v) {
                       setState(() => stroke = v);
-                      CrosshairWindow.updateFull(stroke, length, gap, showCenter);
+                      CrosshairWindow.updateFull(
+                        stroke,
+                        length,
+                        gap,
+                        showCenter,
+                      );
                       _saveSettings();
                     }
                   : null,
@@ -151,7 +160,12 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
               onChanged: _hiveLoaded
                   ? (v) {
                       setState(() => length = v);
-                      CrosshairWindow.updateFull(stroke, length, gap, showCenter);
+                      CrosshairWindow.updateFull(
+                        stroke,
+                        length,
+                        gap,
+                        showCenter,
+                      );
                       _saveSettings();
                     }
                   : null,
@@ -165,7 +179,12 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
               onChanged: _hiveLoaded
                   ? (v) {
                       setState(() => gap = v);
-                      CrosshairWindow.updateFull(stroke, length, gap, showCenter);
+                      CrosshairWindow.updateFull(
+                        stroke,
+                        length,
+                        gap,
+                        showCenter,
+                      );
                       _saveSettings();
                     }
                   : null,
@@ -179,7 +198,12 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
                     ? (value) {
                         setState(() {
                           showCenter = value;
-                          CrosshairWindow.updateFull(stroke, length, gap, showCenter);
+                          CrosshairWindow.updateFull(
+                            stroke,
+                            length,
+                            gap,
+                            showCenter,
+                          );
                           _saveSettings();
                         });
                       }
@@ -197,7 +221,7 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "快捷键",
+                          "准星开关快捷键",
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         TextButton(
@@ -219,11 +243,11 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
             ),
             const SizedBox(height: 24),
             SizedBox(
-              width: double.infinity,
               child: ElevatedButton(
                 onPressed: _toggleCrosshair,
                 child: Text(
-                  isCrosshairVisible ? "隐藏准星窗口" : "显示准星窗口",
+                  isCrosshairVisible ? "隐藏准星" : "显示准星",
+                  style: const TextStyle(fontSize: 16,fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -263,13 +287,13 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
   }
 
   Widget _slider(
-      BuildContext context, {
-        required String label,
-        required double value,
-        required double min,
-        required double max,
-        ValueChanged<double>? onChanged,
-      }) {
+    BuildContext context, {
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    ValueChanged<double>? onChanged,
+  }) {
     final textController = TextEditingController(
       text: value.toStringAsFixed(1),
     );
@@ -284,20 +308,22 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
+                Text(label, style: Theme.of(context).textTheme.bodyLarge),
                 SizedBox(
                   width: 80,
                   child: TextField(
                     controller: textController,
                     enabled: onChanged != null,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -402,7 +428,9 @@ class _HotkeyDialogState extends State<_HotkeyDialog> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).colorScheme.primary),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -484,9 +512,9 @@ class _HotkeyDialogState extends State<_HotkeyDialog> {
               widget.onSave(_modifiers, _vk);
               Navigator.of(context).pop();
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('请设置有效的按键')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('请设置有效的按键')));
             }
           },
           child: const Text('确定'),
