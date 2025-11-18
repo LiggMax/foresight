@@ -16,12 +16,14 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
   static const String _strokeKey = 'stroke';
   static const String _lengthKey = 'length';
   static const String _gapKey = 'gap';
+  static const String _showCenterKey = 'showCenter';
   static const String _hotkeyModifiersKey = 'hotkeyModifiers';
   static const String _hotkeyVkKey = 'hotkeyVk';
 
   double stroke = 3;
   double length = 25;
   double gap = 8;
+  bool showCenter = false;
 
   bool isCrosshairVisible = false;
   bool _hiveLoaded = false;
@@ -43,19 +45,25 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
         final strokeValue = _settingsBox!.get(_strokeKey, defaultValue: 3.0);
         final lengthValue = _settingsBox!.get(_lengthKey, defaultValue: 25.0);
         final gapValue = _settingsBox!.get(_gapKey, defaultValue: 8.0);
+        final showCenterValue = _settingsBox!.get(_showCenterKey, defaultValue: false);
         final modifiersValue = _settingsBox!.get(_hotkeyModifiersKey, defaultValue: 0);
         final vkValue = _settingsBox!.get(_hotkeyVkKey, defaultValue: KeyboardHook.VK_F1);
 
         stroke = (strokeValue is double) ? strokeValue : 3.0;
         length = (lengthValue is double) ? lengthValue : 25.0;
         gap = (gapValue is double) ? gapValue : 8.0;
+        showCenter = (showCenterValue is bool) ? showCenterValue : false;
         _hotkeyModifiers = (modifiersValue is int) ? modifiersValue : 0;
         _hotkeyVk = (vkValue is int) ? vkValue : KeyboardHook.VK_F1;
         _hiveLoaded = true;
       });
 
+      // 同步参数到 C++ 侧，确保快捷键使用持久化的参数
+      CrosshairWindow.updateFull(stroke, length, gap, showCenter);
+
       if (isCrosshairVisible) {
-        CrosshairWindow.update(stroke, length, gap);
+        // 如果窗口已显示，需要刷新显示
+        CrosshairWindow.updateFull(stroke, length, gap, showCenter);
       }
 
       _registerHotkey();
@@ -74,6 +82,7 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
       await _settingsBox!.put(_strokeKey, stroke);
       await _settingsBox!.put(_lengthKey, length);
       await _settingsBox!.put(_gapKey, gap);
+      await _settingsBox!.put(_showCenterKey, showCenter);
     } catch (e) {
       // 保存失败时静默处理
     }
@@ -109,8 +118,7 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
       appBar: AppBar(
         title: const Text("准星控制面板"),
       ),
-      body:
-      Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +137,7 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
               onChanged: _hiveLoaded
                   ? (v) {
                       setState(() => stroke = v);
-                      CrosshairWindow.update(stroke, length, gap);
+                      CrosshairWindow.updateFull(stroke, length, gap, showCenter);
                       _saveSettings();
                     }
                   : null,
@@ -143,7 +151,7 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
               onChanged: _hiveLoaded
                   ? (v) {
                       setState(() => length = v);
-                      CrosshairWindow.update(stroke, length, gap);
+                      CrosshairWindow.updateFull(stroke, length, gap, showCenter);
                       _saveSettings();
                     }
                   : null,
@@ -157,10 +165,26 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
               onChanged: _hiveLoaded
                   ? (v) {
                       setState(() => gap = v);
-                      CrosshairWindow.update(stroke, length, gap);
+                      CrosshairWindow.updateFull(stroke, length, gap, showCenter);
                       _saveSettings();
                     }
                   : null,
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: SwitchListTile(
+                title: const Text("显示中心点"),
+                value: showCenter,
+                onChanged: _hiveLoaded
+                    ? (value) {
+                        setState(() {
+                          showCenter = value;
+                          CrosshairWindow.updateFull(stroke, length, gap, showCenter);
+                          _saveSettings();
+                        });
+                      }
+                    : null,
+              ),
             ),
             const SizedBox(height: 24),
             Card(
@@ -193,7 +217,7 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
                 ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -214,6 +238,8 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
       CrosshairWindow.hide();
     } else {
       CrosshairWindow.show(stroke, length, gap);
+      // Update with center dot setting after showing
+      CrosshairWindow.updateFull(stroke, length, gap, showCenter);
     }
     setState(() => isCrosshairVisible = !isCrosshairVisible);
   }
@@ -244,6 +270,10 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
         required double max,
         ValueChanged<double>? onChanged,
       }) {
+    final textController = TextEditingController(
+      text: value.toStringAsFixed(1),
+    );
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -251,15 +281,65 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "$label：${value.toStringAsFixed(1)}",
-              style: Theme.of(context).textTheme.bodyLarge,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: textController,
+                    enabled: onChanged != null,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    onSubmitted: (text) {
+                      if (onChanged != null) {
+                        final newValue = double.tryParse(text);
+                        if (newValue != null) {
+                          final clampedValue = newValue.clamp(min, max);
+                          textController.text = clampedValue.toStringAsFixed(1);
+                          onChanged(clampedValue);
+                        } else {
+                          textController.text = value.toStringAsFixed(1);
+                        }
+                      }
+                    },
+                    onEditingComplete: () {
+                      if (onChanged != null) {
+                        final newValue = double.tryParse(textController.text);
+                        if (newValue != null) {
+                          final clampedValue = newValue.clamp(min, max);
+                          textController.text = clampedValue.toStringAsFixed(1);
+                          onChanged(clampedValue);
+                        } else {
+                          textController.text = value.toStringAsFixed(1);
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 8),
             Slider(
               value: value,
               min: min,
               max: max,
               onChanged: onChanged,
+              onChangeEnd: (newValue) {
+                // Update text field when slider ends
+                textController.text = newValue.toStringAsFixed(1);
+              },
             ),
           ],
         ),

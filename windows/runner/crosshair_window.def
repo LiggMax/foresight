@@ -2,5 +2,6 @@ EXPORTS
 crosshair_show
 crosshair_hide
 crosshair_update
+crosshair_update_full
 crosshair_toggle
 

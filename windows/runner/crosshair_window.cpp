@@ -12,6 +12,7 @@ bool g_classRegistered = false;
 double g_stroke = 3.0;
 double g_length = 25.0;
 double g_gap = 8.0;
+bool g_showCenter = false;
 
 const wchar_t* CLASS_NAME = L"FORESIGHT_CROSSHAIR";
 
@@ -55,6 +56,26 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
       // Bottom line
       MoveToEx(hdc, centerX, centerY + halfGap, nullptr);
       LineTo(hdc, centerX, centerY + halfGap + lineLen);
+
+      // Draw center dot if enabled
+      if (g_showCenter) {
+        const int dotRadius = 2;
+        HBRUSH centerBrush = CreateSolidBrush(CROSSHAIR_COLOR);
+        HPEN centerPen = CreatePen(PS_SOLID, 1, CROSSHAIR_COLOR);
+        HBRUSH oldBrush = static_cast<HBRUSH>(SelectObject(hdc, centerBrush));
+        HPEN oldCenterPen = static_cast<HPEN>(SelectObject(hdc, centerPen));
+
+        Ellipse(hdc,
+                centerX - dotRadius,
+                centerY - dotRadius,
+                centerX + dotRadius,
+                centerY + dotRadius);
+
+        SelectObject(hdc, oldBrush);
+        SelectObject(hdc, oldCenterPen);
+        DeleteObject(centerBrush);
+        DeleteObject(centerPen);
+      }
 
       SelectObject(hdc, oldPen);
       DeleteObject(pen);
@@ -155,10 +176,25 @@ void crosshair_update(double stroke, double length, double gap) {
   }
 }
 
+void crosshair_update_full(double stroke, double length, double gap, int showCenter) {
+  g_stroke = stroke;
+  g_length = length;
+  g_gap = gap;
+  g_showCenter = showCenter != 0;
+
+  if (g_hwnd != nullptr) {
+    InvalidateRect(g_hwnd, nullptr, FALSE);
+  }
+}
+
 void crosshair_toggle() {
   if (g_hwnd == nullptr) {
     // Window doesn't exist, create it with current settings
     crosshair_show(g_stroke, g_length, g_gap);
+    // Apply center dot setting after window is created
+    if (g_hwnd != nullptr) {
+      InvalidateRect(g_hwnd, nullptr, FALSE);
+    }
   } else {
     // Window exists, hide it
     crosshair_hide();

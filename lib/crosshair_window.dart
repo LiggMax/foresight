@@ -12,11 +12,16 @@ typedef CrosshairUpdateNative = ffi.Void Function(
     ffi.Double, ffi.Double, ffi.Double);
 typedef CrosshairUpdate = void Function(double, double, double);
 
+typedef CrosshairUpdateFullNative = ffi.Void Function(
+    ffi.Double, ffi.Double, ffi.Double, ffi.Int32);
+typedef CrosshairUpdateFull = void Function(double, double, double, int);
+
 class CrosshairWindow {
   static ffi.DynamicLibrary? _dylib;
   static CrosshairShow? _showFunc;
   static CrosshairHide? _hideFunc;
   static CrosshairUpdate? _updateFunc;
+  static CrosshairUpdateFull? _updateFullFunc;
 
   static void _ensureLoaded() {
     if (_dylib != null) return;
@@ -38,6 +43,9 @@ class CrosshairWindow {
     _updateFunc = _dylib!
         .lookup<ffi.NativeFunction<CrosshairUpdateNative>>('crosshair_update')
         .asFunction<CrosshairUpdate>();
+    _updateFullFunc = _dylib!
+        .lookup<ffi.NativeFunction<CrosshairUpdateFullNative>>('crosshair_update_full')
+        .asFunction<CrosshairUpdateFull>();
   }
 
   static void show(double stroke, double length, double gap) {
@@ -53,5 +61,10 @@ class CrosshairWindow {
   static void update(double stroke, double length, double gap) {
     _ensureLoaded();
     _updateFunc!(stroke, length, gap);
+  }
+
+  static void updateFull(double stroke, double length, double gap, bool showCenter) {
+    _ensureLoaded();
+    _updateFullFunc!(stroke, length, gap, showCenter ? 1 : 0);
   }
 }
