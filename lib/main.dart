@@ -1,158 +1,144 @@
 import 'package:flutter/material.dart';
+import 'crosshair_window.dart';
 
 void main() {
-  runApp(const CrosshairSettingsApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const ControlPanelApp());
 }
 
-class CrosshairSettingsApp extends StatelessWidget {
-  const CrosshairSettingsApp({super.key});
+class ControlPanelApp extends StatelessWidget {
+  const ControlPanelApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: CrosshairSettingsPage(),
+      title: "Foresight Menu",
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.greenAccent),
+        useMaterial3: true,
+      ),
+      home: const ControlPanelPage(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class CrosshairSettingsPage extends StatefulWidget {
+class ControlPanelPage extends StatefulWidget {
+  const ControlPanelPage({super.key});
+
   @override
-  _CrosshairSettingsPageState createState() => _CrosshairSettingsPageState();
+  State<ControlPanelPage> createState() => _ControlPanelPageState();
 }
 
-class _CrosshairSettingsPageState extends State<CrosshairSettingsPage> {
-  double strokeWidth = 3;
-  double lineLength = 25;
+class _ControlPanelPageState extends State<ControlPanelPage> {
+  double stroke = 3;
+  double length = 25;
   double gap = 8;
+
+  bool isCrosshairVisible = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("十字准心设置")),
-      body: Row(
-        children: [
-          // ------------------------- 左侧菜单 -------------------------
-          Container(
-            width: 250,
-            color: Colors.grey.shade100,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                const Text("十字准心设置", style: TextStyle(fontSize: 18)),
-                const SizedBox(height: 20),
-
-                // 粗细
-                _buildSlider(
-                  label: "线条粗细 (${strokeWidth.toStringAsFixed(1)})",
-                  value: strokeWidth,
-                  min: 1,
-                  max: 10,
-                  onChanged: (v) => setState(() => strokeWidth = v),
-                ),
-
-                // 长度
-                _buildSlider(
-                  label: "线条长度 (${lineLength.toStringAsFixed(0)})",
-                  value: lineLength,
-                  min: 5,
-                  max: 80,
-                  onChanged: (v) => setState(() => lineLength = v),
-                ),
-
-                // 间距
-                _buildSlider(
-                  label: "中心间距 (${gap.toStringAsFixed(0)})",
-                  value: gap,
-                  min: 0,
-                  max: 30,
-                  onChanged: (v) => setState(() => gap = v),
-                ),
-              ],
+      appBar: AppBar(
+        title: const Text("准星控制面板"),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "参数调节",
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-          ),
-
-          // ------------------------- 显示准星 -------------------------
-          Expanded(
-            child: Center(
-              child: CustomPaint(
-                size: const Size(300, 300),
-                painter: CrosshairPainter(
-                  strokeWidth: strokeWidth,
-                  lineLength: lineLength,
-                  gap: gap,
+            const SizedBox(height: 12),
+            _slider(
+              context,
+              label: "线条粗细",
+              value: stroke,
+              min: 1,
+              max: 10,
+              onChanged: (v) {
+                setState(() => stroke = v);
+                CrosshairWindow.update(stroke, length, gap);
+              },
+            ),
+            _slider(
+              context,
+              label: "线条长度",
+              value: length,
+              min: 5,
+              max: 80,
+              onChanged: (v) {
+                setState(() => length = v);
+                CrosshairWindow.update(stroke, length, gap);
+              },
+            ),
+            _slider(
+              context,
+              label: "中心间距",
+              value: gap,
+              min: 0,
+              max: 30,
+              onChanged: (v) {
+                setState(() => gap = v);
+                CrosshairWindow.update(stroke, length, gap);
+              },
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _toggleCrosshair,
+                child: Text(
+                  isCrosshairVisible ? "隐藏准星窗口" : "显示准星窗口",
                 ),
               ),
             ),
-          )
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSlider({
+  void _toggleCrosshair() {
+    if (isCrosshairVisible) {
+      CrosshairWindow.hide();
+    } else {
+      CrosshairWindow.show(stroke, length, gap);
+    }
+    setState(() => isCrosshairVisible = !isCrosshairVisible);
+  }
+
+  Widget _slider(
+    BuildContext context, {
     required String label,
     required double value,
-    required Function(double) onChanged,
     required double min,
     required double max,
+    required ValueChanged<double> onChanged,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label),
-        Slider(value: value, min: min, max: max, onChanged: onChanged),
-        const SizedBox(height: 10),
-      ],
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "$label：${value.toStringAsFixed(1)}",
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            Slider(
+              value: value,
+              min: min,
+              max: max,
+              onChanged: onChanged,
+            ),
+          ],
+        ),
+      ),
     );
   }
-}
-
-// ---------------------------- 准星绘制类 ----------------------------
-class CrosshairPainter extends CustomPainter {
-  final double strokeWidth;
-  final double lineLength;
-  final double gap;
-
-  CrosshairPainter({
-    required this.strokeWidth,
-    required this.lineLength,
-    required this.gap,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..color = Colors.red
-      ..style = PaintingStyle.stroke;
-
-    final center = Offset(size.width / 2, size.height / 2);
-
-    // 横向
-    canvas.drawLine(
-        Offset(center.dx - gap - lineLength, center.dy),
-        Offset(center.dx - gap, center.dy),
-        paint);
-
-    canvas.drawLine(
-        Offset(center.dx + gap, center.dy),
-        Offset(center.dx + gap + lineLength, center.dy),
-        paint);
-
-    // 纵向
-    canvas.drawLine(
-        Offset(center.dx, center.dy - gap - lineLength),
-        Offset(center.dx, center.dy - gap),
-        paint);
-
-    canvas.drawLine(
-        Offset(center.dx, center.dy + gap),
-        Offset(center.dx, center.dy + gap + lineLength),
-        paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

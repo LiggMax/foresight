@@ -7,6 +7,7 @@ project(runner LANGUAGES CXX)
 #
 # Any new source files that you add to the application should be added here.
 add_executable(${BINARY_NAME} WIN32
+  "crosshair_window.cpp"
   "flutter_window.cpp"
   "main.cpp"
   "utils.cpp"
@@ -29,6 +30,11 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_BUILD=${FLUTT
 
 # Disable Windows macros that collide with C++ standard library functions.
 target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
+
+# Export functions for FFI
+set_target_properties(${BINARY_NAME} PROPERTIES
+  LINK_FLAGS "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/crosshair_window.def"
+)
 
 # Add dependency libraries and include directories. Add any application-specific
 # dependencies here.
