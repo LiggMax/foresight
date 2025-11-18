@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'crosshair_window.dart';
 
 class ControlPanelPage extends StatefulWidget {
@@ -9,11 +10,61 @@ class ControlPanelPage extends StatefulWidget {
 }
 
 class _ControlPanelPageState extends State<ControlPanelPage> {
+  static const String _boxName = 'crosshairSettings';
+  static const String _strokeKey = 'stroke';
+  static const String _lengthKey = 'length';
+  static const String _gapKey = 'gap';
+
   double stroke = 3;
   double length = 25;
   double gap = 8;
 
   bool isCrosshairVisible = false;
+  bool _hiveLoaded = false;
+  Box? _settingsBox;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      _settingsBox = await Hive.openBox(_boxName);
+      setState(() {
+        final strokeValue = _settingsBox!.get(_strokeKey, defaultValue: 3.0);
+        final lengthValue = _settingsBox!.get(_lengthKey, defaultValue: 25.0);
+        final gapValue = _settingsBox!.get(_gapKey, defaultValue: 8.0);
+
+        stroke = (strokeValue is double) ? strokeValue : 3.0;
+        length = (lengthValue is double) ? lengthValue : 25.0;
+        gap = (gapValue is double) ? gapValue : 8.0;
+        _hiveLoaded = true;
+      });
+
+      if (isCrosshairVisible) {
+        CrosshairWindow.update(stroke, length, gap);
+      }
+    } catch (e) {
+      // 如果加载失败，使用默认值
+      setState(() {
+        _hiveLoaded = true;
+      });
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    if (_settingsBox == null || !_hiveLoaded) return;
+
+    try {
+      await _settingsBox!.put(_strokeKey, stroke);
+      await _settingsBox!.put(_lengthKey, length);
+      await _settingsBox!.put(_gapKey, gap);
+    } catch (e) {
+      // 保存失败时静默处理
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +72,8 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
       appBar: AppBar(
         title: const Text("准星控制面板"),
       ),
-      body: Padding(
+      body:
+      Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,10 +89,13 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
               value: stroke,
               min: 1,
               max: 10,
-              onChanged: (v) {
-                setState(() => stroke = v);
-                CrosshairWindow.update(stroke, length, gap);
-              },
+              onChanged: _hiveLoaded
+                  ? (v) {
+                      setState(() => stroke = v);
+                      CrosshairWindow.update(stroke, length, gap);
+                      _saveSettings();
+                    }
+                  : null,
             ),
             _slider(
               context,
@@ -48,10 +103,13 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
               value: length,
               min: 5,
               max: 80,
-              onChanged: (v) {
-                setState(() => length = v);
-                CrosshairWindow.update(stroke, length, gap);
-              },
+              onChanged: _hiveLoaded
+                  ? (v) {
+                      setState(() => length = v);
+                      CrosshairWindow.update(stroke, length, gap);
+                      _saveSettings();
+                    }
+                  : null,
             ),
             _slider(
               context,
@@ -59,10 +117,13 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
               value: gap,
               min: 0,
               max: 30,
-              onChanged: (v) {
-                setState(() => gap = v);
-                CrosshairWindow.update(stroke, length, gap);
-              },
+              onChanged: _hiveLoaded
+                  ? (v) {
+                      setState(() => gap = v);
+                      CrosshairWindow.update(stroke, length, gap);
+                      _saveSettings();
+                    }
+                  : null,
             ),
             const Spacer(),
             SizedBox(
@@ -95,7 +156,7 @@ class _ControlPanelPageState extends State<ControlPanelPage> {
         required double value,
         required double min,
         required double max,
-        required ValueChanged<double> onChanged,
+        ValueChanged<double>? onChanged,
       }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
